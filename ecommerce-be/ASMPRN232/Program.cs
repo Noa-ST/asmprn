@@ -34,16 +34,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Configuration.AddEnvironmentVariables();
 
-// CORS
+// Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy => policy
-            // Tạm thời cho phép mọi miền để kiểm tra lỗi CORS
-            .SetIsOriginAllowed(origin => true)
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins(
+            "https://asmprn.vercel.app",  // domain FE Vercel
+            "http://localhost:3000"       // local dev FE
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
 });
+
 builder.Services.AddAuthorization();
 var app = builder.Build();
 
@@ -57,7 +62,7 @@ if (app.Environment.IsDevelopment())
 
  app.UseHttpsRedirection();
 
-app.UseCors("AllowFrontend");
+app.UseCors("AllowSpecificOrigins");
 
 app.UseAuthentication();
 app.UseAuthorization();
