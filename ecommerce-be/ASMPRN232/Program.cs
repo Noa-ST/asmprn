@@ -62,5 +62,5 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
+app.MapGet("/", () => Results.Ok("API is running successfully 🚀"));
 app.Run();
