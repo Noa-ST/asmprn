@@ -32,6 +32,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])) 
         };
     });
+builder.Configuration.AddEnvironmentVariables();
 
 // CORS
 builder.Services.AddCors(options =>
