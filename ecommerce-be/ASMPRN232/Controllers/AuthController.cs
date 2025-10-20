@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace ASMPRN232.Controllers
 {
@@ -29,7 +30,7 @@ namespace ASMPRN232.Controllers
         {
             try
             {
-                if (_context.Users.Any(u => u.Email == dto.Email))
+                if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
                     return BadRequest(new { message = "Email already exists" });
 
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -47,8 +48,8 @@ namespace ASMPRN232.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during registration");
-                return StatusCode(500, new { message = "Internal Server Error during registration" });
+                _logger.LogError(ex, "Error during register");
+                return StatusCode(500, new { message = "Server error during register" });
             }
         }
 
@@ -57,61 +58,50 @@ namespace ASMPRN232.Controllers
         {
             try
             {
-                _logger.LogInformation($"[LOGIN] Attempt for email: {dto.Email}");
+                if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+                    return BadRequest(new { message = "Email and password are required" });
 
-                var user = _context.Users.FirstOrDefault(u => u.Email == dto.Email);
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
                 if (user == null)
-                {
-                    _logger.LogWarning("[LOGIN] Email not found: {Email}", dto.Email);
                     return Unauthorized(new { message = "Invalid email or password" });
-                }
 
                 if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                {
-                    _logger.LogWarning("[LOGIN] Wrong password for email: {Email}", dto.Email);
                     return Unauthorized(new { message = "Invalid email or password" });
-                }
 
-                // --- Validate JWT Config ---
-                var keyValue = _configuration["Jwt:Key"];
-                var issuer = _configuration["Jwt:Issuer"];
-                var audience = _configuration["Jwt:Audience"];
+                string jwtKey = _configuration["Jwt:Key"];
+                string jwtIssuer = _configuration["Jwt:Issuer"];
+                string jwtAudience = _configuration["Jwt:Audience"];
 
-                if (string.IsNullOrEmpty(keyValue) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
+                if (string.IsNullOrEmpty(jwtKey))
                 {
-                    _logger.LogError("[JWT ERROR] Missing JWT configuration. Key: {Key}, Issuer: {Issuer}, Audience: {Audience}",
-                        keyValue, issuer, audience);
-                    return StatusCode(500, new { message = "Server misconfigured: missing JWT settings" });
+                    _logger.LogError("Jwt:Key is missing in environment variables");
+                    return StatusCode(500, new { message = "Server configuration error: missing JWT key" });
                 }
 
-                // --- Create JWT ---
                 var claims = new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Email, user.Email)
                 };
 
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyValue));
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
                 var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
                 var token = new JwtSecurityToken(
-                    issuer: issuer,
-                    audience: audience,
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
                     claims: claims,
                     expires: DateTime.UtcNow.AddHours(1),
                     signingCredentials: creds
                 );
 
-                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-
-                _logger.LogInformation("[LOGIN SUCCESS] User {Email} logged in successfully", dto.Email);
-
+                string tokenString = new JwtSecurityTokenHandler().WriteToken(token);
                 return Ok(new { token = tokenString });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[LOGIN ERROR] Unexpected server error during login");
-                return StatusCode(500, new { message = "Internal Server Error during login" });
+                _logger.LogError(ex, "Error during login");
+                return StatusCode(500, new { message = "Server error during login" });
             }
         }
     }
