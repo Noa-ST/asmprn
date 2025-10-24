@@ -16,6 +16,10 @@ const DICT: Dictionary = {
   noImage: { vi: "Không có ảnh", en: "No image" },
   previous: { vi: "Trước", en: "Previous" },
   next: { vi: "Sau", en: "Next" },
+  orders: { vi: "Đơn hàng", en: "Orders" },
+  customers: { vi: "Khách hàng", en: "Customers" },
+  statistics: { vi: "Thống kê", en: "Statistics" },
+  soldOut: { vi: "Hết hàng", en: "Sold out" },
 };
 
 const I18nContext = createContext<any>(null);
