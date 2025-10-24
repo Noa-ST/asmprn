@@ -18,7 +18,8 @@ namespace ASMPRN232.Controllers
             _context = context;
         }
 
-        // Lấy lịch sử orders của user
+        // Lấy lịch sử orders của user (Sau khi checkout thành công, API này sẽ trả về)
+        // API Endpoint: GET /api/orders
         [Authorize]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
@@ -29,11 +30,15 @@ namespace ASMPRN232.Controllers
                 .Include(o => o.Products)  // Include OrderItems
                 .ThenInclude(oi => oi.Product)  // Include Product trong OrderItem
                 .Where(o => o.UserId == userId)
+                // ĐÃ SỬA: Sắp xếp theo OrderDate giảm dần (mới nhất trước)
+                .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 
             return Ok(orders);
         }
 
+        // Xử lý logic checkout và ghi lại đơn hàng
+        // API Endpoint: POST /api/orders
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> PlaceOrder()
@@ -62,6 +67,7 @@ namespace ASMPRN232.Controllers
                     UserId = userId,
                     TotalAmount = totalAmount,
                     Status = "pending",
+                    // OrderDate được thiết lập tự động trong Order model
                     Products = cartItems.Select(ci => new OrderItem
                     {
                         ProductId = ci.ProductId,
@@ -105,7 +111,6 @@ namespace ASMPRN232.Controllers
                 return StatusCode(500, new { message = "Lỗi không xác định", error = ex.Message });
             }
         }
-
 
 
         // Lấy chi tiết một order (optional, để xem detail)

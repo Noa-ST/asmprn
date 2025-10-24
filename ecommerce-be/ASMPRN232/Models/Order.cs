@@ -8,5 +8,10 @@
         public List<OrderItem> Products { get; set; } 
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = "pending";
+        public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+        public Order()
+        {
+            OrderDate = DateTime.UtcNow;
+        }
     }
 }
